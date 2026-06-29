@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Atavaliev v 3D</title>
+  <link rel="preconnect" href="https://media.printables.com" crossorigin>
+  <link rel="dns-prefetch" href="https://media.printables.com">
+  <link rel="preconnect" href="https://cdn.thingiverse.com" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.thingiverse.com">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; }
@@ -558,10 +562,11 @@ function reset() {
 }
 
 // ── FETCH PRINTABLES ──
-async function fpSingle(catId, q) {
+async function fpSingle(catId, q, limit) {
+  const lim = limit || PAGE;
   const catPart = catId ? `, categoryId: ${catId}` : '';
   const qStr = JSON.stringify(q||'');
-  const gql = `{ searchPrints2(query:${qStr}, limit:${PAGE}, offset:${S.page*PAGE}${catPart}, ordering:${S.sort}) {
+  const gql = `{ searchPrints2(query:${qStr}, limit:${lim}, offset:${S.page*lim}${catPart}, ordering:${S.sort}) {
     items { id name slug likesCount downloadCount makesCount printDuration weight
       image { filePath } images { filePath } user { publicUsername } stls { id name }
     }
@@ -575,7 +580,8 @@ async function fpSingle(catId, q) {
 
 async function fp() {
   if (usefulMode && !(S.tq||S.q)) {
-    const results = await Promise.all(USEFUL_CATS.map(catId => fpSingle(catId, '').catch(()=>[])));
+    const PER_CAT = 8;
+    const results = await Promise.all(USEFUL_CATS.map(catId => fpSingle(catId, '', PER_CAT).catch(()=>[])));
     const seen = new Set();
     return results.flat().filter(it => {
       if (seen.has(it.id)) return false;
@@ -625,7 +631,9 @@ function renderCard(it, ci) {
   // Сохраняем данные в JS-хранилище (безопасно — без инъекции в DOM)
   cardStore[ci] = it;
 
-  const imgs = (it.images||[]).slice(0,3).map(i => pImgUrl(i.filePath)).filter(Boolean);
+  const thumb = it.image?.filePath ? pImgUrl(it.image.filePath) : null;
+  const extraImgs = (it.images||[]).slice(0,2).map(i => pImgUrl(i.filePath)).filter(Boolean);
+  const imgs = [thumb, ...extraImgs].filter(Boolean).slice(0,3);
   const url = cardUrl(it);
   const author = esc(it.user?.publicUsername||'');
   const title = esc(it.name||'Без названия');
@@ -638,8 +646,8 @@ function renderCard(it, ci) {
   // Первое фото — src сразу. Остальные — только data-src, src не ставим (избегаем лишнего запроса)
   const imgHtml = imgs.length
     ? imgs.map((u,i) => i===0
-        ? `<img class="img-slide show" src="${esc(u)}" loading="eager" onerror="this.style.display='none'" />`
-        : `<img class="img-slide" data-src="${esc(u)}" loading="lazy" onerror="this.style.display='none'" />`
+        ? `<img class="img-slide show" src="${esc(u)}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
+        : `<img class="img-slide" data-src="${esc(u)}" loading="lazy" decoding="async" onerror="this.style.display='none'" />`
       ).join('')
     : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#222">📦</div>';
 
