@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Atavaliev v 3D</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f0f0f; color: #e0e0e0; }
+
+    /* HEADER */
+    .header { background: #181818; border-bottom: 1px solid #242424; padding: 10px 20px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 200; }
+    .logo { font-size: 18px; font-weight: 800; color: #fff; white-space: nowrap; }
+    .logo span { color: #ff6b35; }
+    .search-wrap { flex: 1; display: flex; }
+    .search-wrap input { flex: 1; padding: 8px 14px; border-radius: 8px 0 0 8px; border: 1px solid #2b2b2b; border-right: none; background: #1e1e1e; color: #fff; font-size: 14px; outline: none; }
+    .search-wrap input:focus { border-color: #ff6b35; }
+    .btn-find { padding: 8px 18px; background: #ff6b35; color: #fff; border: none; border-radius: 0 8px 8px 0; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .btn-find:hover { background: #e05a28; }
+    .btn-fav-tab { padding: 7px 13px; background: #1e1e1e; border: 1px solid #2b2b2b; border-radius: 8px; color: #888; font-size: 13px; cursor: pointer; white-space: nowrap; position: relative; }
+    .btn-fav-tab:hover { color: #ff6b35; border-color: #ff6b35; }
+    .btn-fav-tab.on { color: #ff6b35; border-color: #ff6b35; background: #ff6b3510; }
+    .fav-cnt { position: absolute; top: -5px; right: -5px; background: #ff6b35; color: #fff; font-size: 9px; font-weight: 800; border-radius: 8px; padding: 1px 4px; min-width: 14px; text-align: center; display: none; }
+    .fav-cnt.show { display: block; }
+    .btn-gear { padding: 7px 11px; background: #1e1e1e; border: 1px solid #2b2b2b; border-radius: 8px; color: #666; font-size: 15px; cursor: pointer; }
+    .btn-gear:hover { color: #ccc; }
+
+    /* SORT */
+    .sort-bar { padding: 7px 20px; background: #141414; border-bottom: 1px solid #1e1e1e; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+    .bar-lbl { font-size: 11px; color: #3a3a3a; margin-right: 3px; white-space: nowrap; }
+    .pill { padding: 4px 11px; border-radius: 20px; font-size: 12px; border: 1px solid #222; background: transparent; color: #666; cursor: pointer; white-space: nowrap; }
+    .pill:hover { border-color: #3a3a3a; color: #bbb; }
+    .pill.on { background: #ff6b35; color: #fff; border-color: #ff6b35; }
+    .sep { width: 1px; height: 16px; background: #222; flex-shrink: 0; margin: 0 4px; }
+
+    /* CATEGORIES */
+    .cat-bar { padding: 7px 20px; background: #111; border-bottom: 1px solid #1a1a1a; display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; overflow: visible; position: relative; }
+    .cat { padding: 4px 10px; border-radius: 6px; font-size: 12px; border: 1px solid #1e1e1e; background: #161616; color: #5a5a5a; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+    .cat:hover { border-color: #333; color: #bbb; }
+    .cat.on { border-color: #ff6b35; color: #ff6b35; background: #ff6b3510; }
+
+    /* DROPDOWN MORE */
+    .cat-more-wrap { position: relative; flex-shrink: 0; }
+    .cat-more-btn { padding: 4px 10px; border-radius: 6px; font-size: 12px; border: 1px solid #2a2a2a; background: #1e1e1e; color: #888; cursor: pointer; white-space: nowrap; }
+    .cat-more-btn:hover { color: #ccc; border-color: #444; }
+    .cat-dropdown { display: none; position: fixed; top: auto; right: 20px; background: #1c1c1c; border: 1px solid #2a2a2a; border-radius: 10px; padding: 10px 12px; width: 480px; max-width: 95vw; z-index: 1000; box-shadow: 0 8px 32px #000c; max-height: 70vh; overflow-y: auto; }
+    .cat-dropdown.open { display: block; }
+    .cat-group { margin-bottom: 10px; }
+    .cat-group-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #444; margin-bottom: 5px; padding: 0 2px; }
+    .cat-group-items { display: flex; gap: 5px; flex-wrap: wrap; }
+    .cat-d { padding: 4px 10px; border-radius: 6px; font-size: 12px; border: 1px solid #222; background: #161616; color: #666; cursor: pointer; white-space: nowrap; }
+    .cat-d:hover { border-color: #444; color: #ccc; }
+    .cat-d.on { border-color: #ff6b35; color: #ff6b35; background: #ff6b3510; }
+    .dd-search { width: 100%; padding: 7px 12px; background: #111; border: 1px solid #2a2a2a; border-radius: 6px; color: #ddd; font-size: 13px; outline: none; margin-bottom: 10px; }
+    .dd-search:focus { border-color: #ff6b35; }
+    #dd-filtered { display: flex; flex-wrap: wrap; gap: 5px; }
+
+    /* SOURCE BAR */
+    .src-bar { padding: 5px 20px; background: #0d0d0d; border-bottom: 1px solid #181818; display: flex; gap: 5px; align-items: center; }
+    .src-lbl { font-size: 11px; color: #333; margin-right: 3px; }
+    .src-btn { padding: 3px 9px; border-radius: 5px; font-size: 11px; font-weight: 600; border: 1px solid #1e1e1e; background: transparent; color: #444; cursor: pointer; }
+    .src-btn:hover { border-color: #3a3a3a; color: #aaa; }
+    .src-btn.on { border-color: #ff6b35; color: #ff6b35; background: #ff6b3510; }
+    .src-btn.link { border-color: #00ae4230; color: #00ae42; }
+    .src-btn.link:hover { background: #00ae4210; }
+
+    /* TRANSLATE */
+    .tr-note { padding: 3px 20px; background: #0a0a0a; font-size: 11px; color: #555; display: none; }
+    .tr-note b { color: #ff6b35; }
+
+    /* GRID */
+    .main { padding: 14px 20px; }
+    .status { text-align: center; padding: 60px 20px; color: #444; font-size: 14px; }
+    .spin { width: 24px; height: 24px; border: 3px solid #1e1e1e; border-top-color: #ff6b35; border-radius: 50%; animation: rot .7s linear infinite; margin: 0 auto 10px; }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+
+    /* CARD */
+    .card { background: #161616; border-radius: 10px; overflow: hidden; border: 1px solid #1e1e1e; display: flex; flex-direction: column; transition: transform .18s, border-color .18s; }
+    .card:hover { transform: translateY(-2px); border-color: #ff6b35; }
+
+    .img-wrap { position: relative; width: 100%; padding-top: 70%; background: #1a1a1a; overflow: hidden; flex-shrink: 0; }
+    .img-slide { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .3s; }
+    .img-slide.show { opacity: 1; }
+    .img-nav { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); display: flex; gap: 3px; }
+    .img-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.25); cursor: pointer; }
+    .img-dot.on { background: #fff; }
+    .img-arr { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,.55); border: none; color: #fff; font-size: 13px; cursor: pointer; padding: 3px 7px; border-radius: 4px; opacity: 0; transition: opacity .15s; }
+    .img-wrap:hover .img-arr { opacity: 1; }
+    .arr-l { left: 4px; } .arr-r { right: 4px; }
+    .src-badge { position: absolute; top: 6px; left: 6px; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+    .b-p { background: #ff6b3575; color: #fff; }
+    .b-t { background: #24aae175; color: #fff; }
+    .fav-btn { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,.5); border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: transform .15s; }
+    .fav-btn:hover { transform: scale(1.2); }
+    .fav-btn.on { background: rgba(255,107,53,.7); }
+
+    .card-body { padding: 9px 10px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .card-title { font-size: 12px; font-weight: 600; color: #e8e8e8; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-decoration: none; }
+    .card-title:hover { color: #ff6b35; }
+    .card-author { font-size: 11px; color: #3e3e3e; }
+    .badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 1px; }
+    .btime { font-size: 11px; font-weight: 600; color: #ff6b35; background: #ff6b3512; border-radius: 4px; padding: 2px 6px; }
+    .bweight { font-size: 11px; color: #555; background: #ffffff07; border-radius: 4px; padding: 2px 6px; }
+    .stats { display: flex; gap: 8px; font-size: 10px; color: #333; margin-top: auto; padding-top: 3px; }
+
+    .card-foot { padding: 0 8px 8px; display: flex; gap: 4px; }
+    .fb { flex: 1; padding: 5px 3px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; text-decoration: none; text-align: center; border: none; }
+    .fb-open { background: #ff6b35; color: #fff; }
+    .fb-open:hover { background: #e05a28; }
+    .fb-dl { background: #1e3a1e; color: #4caf50; border: 1px solid #2a4a2a !important; }
+    .fb-dl:hover { background: #1a4a1a; color: #6fcf6f; }
+    .fb-files { background: #1a1a1a; color: #666; border: 1px solid #252525 !important; }
+    .fb-files:hover { border-color: #3a3a3a !important; color: #aaa; }
+
+    /* SENTINEL для infinite scroll */
+    .scroll-sentinel { height: 60px; display: flex; align-items: center; justify-content: center; }
+    .scroll-spin { width: 20px; height: 20px; border: 2px solid #1e1e1e; border-top-color: #ff6b35; border-radius: 50%; animation: rot .7s linear infinite; display: none; }
+    .scroll-spin.show { display: block; }
+    .scroll-end { font-size: 12px; color: #2a2a2a; display: none; }
+    .scroll-end.show { display: block; }
+
+    /* ИЗБРАННОЕ */
+    .fav-empty { text-align: center; padding: 60px 20px; color: #333; font-size: 14px; }
+    .fav-empty span { font-size: 40px; display: block; margin-bottom: 10px; }
+
+    /* MODAL */
+    .modal-bg { display: none; position: fixed; inset: 0; background: #000b; z-index: 500; align-items: center; justify-content: center; }
+    .modal-bg.open { display: flex; }
+    .modal { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 14px; padding: 24px; width: 440px; max-width: 95vw; }
+    .modal h2 { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; }
+    .modal-x { background: none; border: none; color: #555; font-size: 20px; cursor: pointer; }
+    .ms { margin-bottom: 16px; }
+    .ms h3 { font-size: 12px; font-weight: 600; color: #777; margin-bottom: 5px; }
+    .ms p { font-size: 12px; color: #4a4a4a; line-height: 1.6; }
+    .ms a { color: #ff6b35; text-decoration: none; }
+    .ms-row { display: flex; gap: 6px; margin-top: 6px; }
+    .ms input { flex: 1; padding: 7px 10px; border-radius: 7px; border: 1px solid #2a2a2a; background: #1e1e1e; color: #fff; font-size: 12px; outline: none; }
+    .ms-save { padding: 7px 12px; background: #ff6b35; color: #fff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h2>⚙️ Источники <button class="modal-x" onclick="closeModal()">×</button></h2>
+    <div class="ms">
+      <h3>● Printables — открытый API</h3>
+      <p>500k+ моделей. Работает без ключа. Прямое скачивание ZIP доступно.</p>
+    </div>
+    <div class="ms">
+      <h3>● Thingiverse — 6 млн моделей (ключ вшит)</h3>
+      <p>Ключ уже установлен. Если перестанет работать — создай новый на <a href="https://www.thingiverse.com/apps/create" target="_blank">thingiverse.com/apps/create</a></p>
+      <div class="ms-row">
+        <input id="inp-tv" type="text" placeholder="Новый App Token..." />
+        <button class="ms-save" onclick="saveKey()">Обновить</button>
+      </div>
+    </div>
+    <div class="ms">
+      <h3>🔗 MakerWorld — Bambu Lab платформа</h3>
+      <p>Нет публичного API. Поиск открывается на сайте.</p>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">Atavaliev <span>v 3D</span></div>
+  <div class="search-wrap">
+    <input type="text" id="q" placeholder="органайзер, держатель, подставка, крючок..." />
+    <button class="btn-find" onclick="doSearch()">Найти</button>
+  </div>
+  <button class="btn-fav-tab" id="btn-fav-tab" onclick="toggleFavView()">❤️ Избранное<span class="fav-cnt" id="fav-cnt"></span></button>
+  <button class="btn-gear" onclick="openModal()">⚙️</button>
+</div>
+
+<!-- SORT + POPULARITY FILTER -->
+<div class="sort-bar">
+  <span class="bar-lbl">Сортировка:</span>
+  <button class="pill on" data-sort="popular" onclick="setSort(this)">🔥 Популярные</button>
+  <button class="pill" data-sort="latest" onclick="setSort(this)">🕐 Новые</button>
+  <button class="pill" data-sort="makes_count" onclick="setSort(this)">🔧 Мейки</button>
+  <button class="pill" data-sort="rating" onclick="setSort(this)">⭐ Рейтинг</button>
+  <div class="sep"></div>
+  <span class="bar-lbl">Скачиваний:</span>
+  <button class="pill on" data-min="0" onclick="setMinDl(this)">Все</button>
+  <button class="pill" data-min="1000" onclick="setMinDl(this)">1к+</button>
+  <button class="pill" data-min="5000" onclick="setMinDl(this)">5к+</button>
+  <button class="pill" data-min="10000" onclick="setMinDl(this)">10к+</button>
+  <button class="pill" data-min="50000" onclick="setMinDl(this)">50к+</button>
+</div>
+
+<!-- CATEGORIES -->
+<div class="cat-bar" id="cat-bar">
+  <button class="cat on" data-cat="" onclick="setCat(this,'')">Все</button>
+  <button class="cat" data-cat="49" onclick="setCat(this,'49')">🔧 Инструменты</button>
+  <button class="cat" data-cat="50" onclick="setCat(this,'50')">📦 Органайзеры</button>
+  <button class="cat" data-cat="3" onclick="setCat(this,'3')">🏠 Дом</button>
+  <button class="cat" data-cat="4" onclick="setCat(this,'4')">🍳 Кухня</button>
+  <button class="cat" data-cat="5" onclick="setCat(this,'5')">🚿 Ванная</button>
+  <button class="cat" data-cat="29" onclick="setCat(this,'29')">💼 Офис</button>
+  <button class="cat" data-cat="139" onclick="setCat(this,'139')">🚗 Гараж</button>
+  <button class="cat" data-cat="89" onclick="setCat(this,'89')">🚘 Авто</button>
+  <button class="cat" data-cat="52" onclick="setCat(this,'52')">⚡ Электроника</button>
+  <button class="cat" data-cat="21" onclick="setCat(this,'21')">📱 Гаджеты</button>
+  <button class="cat" data-cat="136" onclick="setCat(this,'136')">🟡 Bambu Lab</button>
+  <button class="cat" data-cat="134" onclick="setCat(this,'134')">🟠 Prusa</button>
+  <div class="cat-more-wrap">
+    <button class="cat-more-btn" onclick="toggleDropdown(event)">Ещё ▾</button>
+    <div class="cat-dropdown" id="cat-dropdown">
+      <input class="dd-search" id="dd-search" type="text" placeholder="🔍 Фильтр категорий..." oninput="filterCats(this.value)" onclick="event.stopPropagation()" />
+      <div id="dd-all">
+        <div class="cat-group">
+          <div class="cat-group-title">🏠 Жильё</div>
+          <div class="cat-group-items">
+            <button class="cat-d" data-cat="6" data-label="Спальня" onclick="setCat(this,'6')">🛏 Спальня</button>
+            <button class="cat-d" data-cat="7" data-label="Гостиная" onclick="setCat(this,'7')">🛋 Гостиная</button>
+            <button class="cat-d" data-cat="44" data-label="Декор" onclick="setCat(this,'44')">🖼 Декор</button>
+            <button class="cat-d" data-cat="53" data-label="Сад" onclick="setCat(this,'53')">🌿 Сад</button>
+            <button class="cat-d" data-cat="57" data-label="Питомцы" onclick="setCat(this,'57')">🐾 Питомцы</button>
+          </div>
+        </div>
+        <div class="cat-group">
+          <div class="cat-group-title">🔬 Техника и наука</div>
+          <div class="cat-group-items">
+            <button class="cat-d" data-cat="64" data-label="Роботы RC" onclick="setCat(this,'64')">🤖 Роботы / RC</button>
+            <button class="cat-d" data-cat="95" data-label="Музыка" onclick="setCat(this,'95')">🎵 Музыка</button>
+            <button class="cat-d" data-cat="90" data-label="Наука" onclick="setCat(this,'90')">🔬 Наука</button>
+            <button class="cat-d" data-cat="91" data-label="Физика Астрономия" onclick="setCat(this,'91')">🌌 Физика / Астро</button>
+            <button class="cat-d" data-cat="92" data-label="Химия Биология" onclick="setCat(this,'92')">🧪 Химия / Био</button>
+            <button class="cat-d" data-cat="94" data-label="Математика" onclick="setCat(this,'94')">📐 Математика</button>
+          </div>
+        </div>
+        <div class="cat-group">
+          <div class="cat-group-title">🎨 Арт и коллекции</div>
+          <div class="cat-group-items">
+            <button class="cat-d" data-cat="14" data-label="Скульптуры" onclick="setCat(this,'14')">🗿 Скульптуры</button>
+            <button class="cat-d" data-cat="15" data-label="Настенные" onclick="setCat(this,'15')">🖼 Настенные</button>
+            <button class="cat-d" data-cat="61" data-label="Животные" onclick="setCat(this,'61')">🐘 Животные</button>
+            <button class="cat-d" data-cat="62" data-label="Архитектура" onclick="setCat(this,'62')">🏛 Архитектура</button>
+            <button class="cat-d" data-cat="75" data-label="История" onclick="setCat(this,'75')">⚔️ История</button>
+            <button class="cat-d" data-cat="101" data-label="Миниатюры" onclick="setCat(this,'101')">🦕 Миниатюры</button>
+            <button class="cat-d" data-cat="97" data-label="Персонажи" onclick="setCat(this,'97')">🐉 Персонажи</button>
+            <button class="cat-d" data-cat="103" data-label="Декорации" onclick="setCat(this,'103')">🏰 Декорации</button>
+          </div>
+        </div>
+        <div class="cat-group">
+          <div class="cat-group-title">🎮 Игры и хобби</div>
+          <div class="cat-group-items">
+            <button class="cat-d" data-cat="30" data-label="Игрушки" onclick="setCat(this,'30')">🧸 Игрушки</button>
+            <button class="cat-d" data-cat="31" data-label="Настолки" onclick="setCat(this,'31')">♟ Настолки</button>
+            <button class="cat-d" data-cat="33" data-label="Пазлы" onclick="setCat(this,'33')">🧩 Пазлы</button>
+            <button class="cat-d" data-cat="100" data-label="Видеоигры" onclick="setCat(this,'100')">🎮 Видеоигры</button>
+            <button class="cat-d" data-cat="76" data-label="Косплей" onclick="setCat(this,'76')">🎭 Косплей</button>
+            <button class="cat-d" data-cat="78" data-label="Маски" onclick="setCat(this,'78')">😷 Маски</button>
+            <button class="cat-d" data-cat="9" data-label="Спорт" onclick="setCat(this,'9')">⚽ Спорт</button>
+          </div>
+        </div>
+        <div class="cat-group">
+          <div class="cat-group-title">🖨 Принтеры</div>
+          <div class="cat-group-items">
+            <button class="cat-d" data-cat="135" data-label="Creality" onclick="setCat(this,'135')">⬜ Creality</button>
+            <button class="cat-d" data-cat="138" data-label="Anycubic" onclick="setCat(this,'138')">🔴 Anycubic</button>
+            <button class="cat-d" data-cat="137" data-label="Voron" onclick="setCat(this,'137')">🔵 Voron</button>
+            <button class="cat-d" data-cat="2" data-label="Другие запчасти" onclick="setCat(this,'2')">⚙️ Другие запчасти</button>
+          </div>
+        </div>
+        <div class="cat-group">
+          <div class="cat-group-title">🎄 Сезонное</div>
+          <div class="cat-group-items">
+            <button class="cat-d" data-cat="70" data-label="Зима Новый год" onclick="setCat(this,'70')">❄️ Зима / НГ</button>
+            <button class="cat-d" data-cat="69" data-label="Хэллоуин" onclick="setCat(this,'69')">🎃 Хэллоуин</button>
+            <button class="cat-d" data-cat="68" data-label="Пасха" onclick="setCat(this,'68')">🐣 Пасха</button>
+            <button class="cat-d" data-cat="71" data-label="Лето" onclick="setCat(this,'71')">☀️ Лето</button>
+          </div>
+        </div>
+      </div>
+      <div id="dd-filtered"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SOURCES -->
+<div class="src-bar">
+  <span class="src-lbl">Источники:</span>
+  <button class="src-btn on" id="sb-p" onclick="toggleSrc('p',this)">● Printables</button>
+  <button class="src-btn on" id="sb-tv" onclick="toggleSrc('tv',this)">● Thingiverse</button>
+  <button class="src-btn link" onclick="openMW()">🟢 MakerWorld ↗</button>
+</div>
+
+<div class="tr-note" id="tr-note">🔄 Переведено: «<span id="tr-from"></span>» → «<b id="tr-to"></b>»</div>
+
+<div class="main">
+  <div id="status" class="status" style="display:none"></div>
+  <div id="grid" class="grid"></div>
+  <div class="scroll-sentinel" id="sentinel">
+    <div class="scroll-spin" id="scroll-spin"></div>
+    <div class="scroll-end" id="scroll-end">— всё загружено —</div>
+  </div>
+</div>
+
+<script>
+const GQL = 'https://api.printables.com/graphql/';
+const TV_KEY = localStorage.getItem('k_tv') || '3b612e746dbcd466e384686f4fede899';
+const PAGE = 24;
+const active = new Set(['p','tv']);
+let S = { q:'', tq:'', cat:'', sort:'popular', page:0, loading:false, minDl:0 };
+const exhausted = { p: false, tv: false };
+let favView = false;
+
+// ── УТИЛИТЫ ──
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtT(h) {
+  if (!h) return null; const v=parseFloat(h); if(isNaN(v)||v<=0) return null;
+  const hh=Math.floor(v), mm=Math.round((v-hh)*60);
+  return hh===0?`${mm} мин`:mm?`${hh}ч ${mm}м`:`${hh}ч`;
+}
+function pImgUrl(fp) {
+  if (!fp) return null;
+  return fp.startsWith('http') ? fp : `https://media.printables.com/${fp}`;
+}
+function cardUrl(it) {
+  if (it._src==='tv') return it._url||'#';
+  return `https://www.printables.com/model/${it.id}-${it.slug}`;
+}
+function fmtNum(n) {
+  if (!n) return '0';
+  if (n >= 1000000) return (n/1000000).toFixed(1).replace('.0','') + 'М';
+  if (n >= 1000) return (n/1000).toFixed(1).replace('.0','') + 'к';
+  return n.toString();
+}
+
+// ── ХРАНИЛИЩЕ ДАННЫХ КАРТОЧЕК (вместо script[type=json] в DOM) ──
+const cardStore = {};
+
+// ── FAVORITES ──
+let favsCache = null;
+function getFavs() {
+  if (favsCache) return favsCache;
+  try { favsCache = JSON.parse(localStorage.getItem('favs3d') || '{}'); } catch { favsCache = {}; }
+  return favsCache;
+}
+function saveFavs(f) { favsCache = f; localStorage.setItem('favs3d', JSON.stringify(f)); }
+function isFav(id) { return !!getFavs()[id]; }
+function toggleFav(id, data, btn) {
+  const f = getFavs();
+  if (f[id]) {
+    delete f[id];
+    btn.classList.remove('on'); btn.textContent = '🤍';
+  } else {
+    f[id] = data;
+    btn.classList.add('on'); btn.textContent = '❤️';
+  }
+  saveFavs(f);
+  updateFavCnt();
+  if (favView) renderFavView();
+}
+function updateFavCnt() {
+  const cnt = Object.keys(getFavs()).length;
+  const el = document.getElementById('fav-cnt');
+  el.textContent = cnt;
+  el.classList.toggle('show', cnt > 0);
+}
+function exitFavView() {
+  if (!favView) return;
+  favView = false;
+  document.getElementById('btn-fav-tab').classList.remove('on');
+}
+function toggleFavView() {
+  favView = !favView;
+  document.getElementById('btn-fav-tab').classList.toggle('on', favView);
+  if (favView) renderFavView();
+  else { document.getElementById('grid').innerHTML=''; reset(); }
+}
+function renderFavView() {
+  const f = getFavs();
+  const grid = document.getElementById('grid');
+  document.getElementById('status').style.display='none';
+  document.getElementById('scroll-spin').classList.remove('show');
+  document.getElementById('scroll-end').classList.remove('show');
+  const items = Object.values(f);
+  if (!items.length) {
+    grid.innerHTML = '<div class="fav-empty"><span>🤍</span>Избранное пусто.<br>Нажимай ❤️ на карточках.</div>';
+    return;
+  }
+  grid.innerHTML = items.map((it,i) => renderCard(it, 'fav'+i)).join('');
+}
+
+// ── MODAL ──
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+function saveKey() {
+  const v = document.getElementById('inp-tv').value.trim();
+  if (!v) return;
+  localStorage.setItem('k_tv', v);
+  location.reload();
+}
+
+// ── DROPDOWN ──
+function toggleDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('cat-dropdown');
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  dd.style.top = (rect.bottom + 6) + 'px';
+  dd.classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.cat-more-wrap') && !e.target.closest('.cat-dropdown')) {
+    document.getElementById('cat-dropdown').classList.remove('open');
+    const inp = document.getElementById('dd-search');
+    if (inp) { inp.value = ''; filterCats(''); }
+  }
+});
+
+// ── SOURCES ──
+function toggleSrc(k, btn) {
+  exitFavView();
+  if (active.has(k) && active.size > 1) { active.delete(k); btn.classList.remove('on'); }
+  else { active.add(k); btn.classList.add('on'); }
+  reset();
+}
+function openMW() {
+  const q = S.tq || S.q || '';
+  window.open(`https://makerworld.com/en/search?keyword=${encodeURIComponent(q)}&type=model`, '_blank');
+}
+
+// ── SORT / CAT / FILTER ──
+function setSort(el) {
+  exitFavView();
+  document.querySelectorAll('[data-sort]').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  S.sort = el.dataset.sort;
+  reset();
+}
+function setMinDl(el) {
+  exitFavView();
+  document.querySelectorAll('[data-min]').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  S.minDl = parseInt(el.dataset.min);
+  reset();
+}
+function setCat(el, catId) {
+  exitFavView();
+  document.querySelectorAll('.cat,.cat-d').forEach(e=>e.classList.remove('on'));
+  el.classList.add('on');
+  S.cat = catId;
+  document.getElementById('cat-dropdown').classList.remove('open');
+  const inp = document.getElementById('dd-search');
+  if (inp) { inp.value = ''; filterCats(''); }
+  const tvBtn = document.getElementById('sb-tv');
+  if (catId) {
+    tvBtn.classList.remove('on');
+    tvBtn.style.opacity = '0.4';
+    tvBtn.title = 'Thingiverse не поддерживает фильтр по категориям';
+  } else {
+    tvBtn.classList.add('on');
+    tvBtn.style.opacity = '1';
+    tvBtn.title = '';
+  }
+  reset();
+}
+
+function filterCats(val) {
+  const q = val.toLowerCase().trim();
+  const all = document.getElementById('dd-all');
+  const filtered = document.getElementById('dd-filtered');
+  if (!q) {
+    all.style.display = '';
+    filtered.style.display = 'none';
+    filtered.innerHTML = '';
+    return;
+  }
+  all.style.display = 'none';
+  filtered.style.display = 'flex';
+  const btns = document.querySelectorAll('#dd-all .cat-d');
+  const matches = [];
+  btns.forEach(b => {
+    if ((b.dataset.label || b.textContent).toLowerCase().includes(q)) matches.push(b.cloneNode(true));
+  });
+  filtered.innerHTML = matches.length
+    ? ''
+    : '<span style="color:#444;font-size:12px">Ничего не найдено</span>';
+  matches.forEach(b => filtered.appendChild(b));
+}
+
+// ── TRANSLATE ──
+function isCyr(s) { return /[а-яёА-ЯЁ]/.test(s); }
+async function translate(text) {
+  try {
+    const r = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ru&tl=en&dt=t&q=${encodeURIComponent(text)}`);
+    const d = await r.json();
+    return d[0].map(x=>x[0]).join('');
+  } catch { return text; }
+}
+async function doSearch() {
+  exitFavView();
+  const raw = document.getElementById('q').value.trim();
+  S.q = raw; S.tq = raw;
+  const note = document.getElementById('tr-note');
+  if (raw && isCyr(raw)) {
+    const en = await translate(raw);
+    S.tq = en;
+    document.getElementById('tr-from').textContent = raw;
+    document.getElementById('tr-to').textContent = en;
+    note.style.display = 'block';
+  } else { note.style.display = 'none'; }
+  reset();
+}
+
+function reset() {
+  if (favView) return;
+  // Очищаем таймеры карусели
+  Object.keys(timers).forEach(k => { clearInterval(timers[k]); delete timers[k]; });
+  // Очищаем хранилище карточек
+  Object.keys(cardStore).forEach(k => delete cardStore[k]);
+  S.page=0; exhausted.p=false; exhausted.tv=false;
+  document.getElementById('grid').innerHTML='';
+  document.getElementById('scroll-end').classList.remove('show');
+  document.getElementById('scroll-spin').classList.remove('show');
+  document.getElementById('status').style.display='none';
+  fetchPage();
+}
+
+// ── FETCH PRINTABLES ──
+async function fp() {
+  const cat = S.cat ? `, categoryId: ${S.cat}` : '';
+  const q = JSON.stringify(S.tq||S.q||'');
+  const gql = `{ searchPrints2(query:${q}, limit:${PAGE}, offset:${S.page*PAGE}${cat}, ordering:${S.sort}) {
+    items { id name slug likesCount downloadCount makesCount printDuration weight
+      image { filePath } images { filePath } user { publicUsername } stls { id name }
+    }
+  }}`;
+  const r = await fetch(GQL, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:gql})});
+  if (!r.ok) throw new Error(`Printables HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.errors) throw new Error(d.errors[0].message);
+  return d.data.searchPrints2.items.map(i=>({...i, _src:'p'}));
+}
+
+// ── FETCH THINGIVERSE ──
+async function ft() {
+  if (S.cat) return [];
+  const sort = {popular:'popular', latest:'newest', makes_count:'makes', rating:'popular'}[S.sort]||'popular';
+  const q = S.tq||S.q;
+  const url = q
+    ? `https://api.thingiverse.com/search/${encodeURIComponent(q)}?sort=${sort}&per_page=${PAGE}&page=${S.page+1}&type=things`
+    : `https://api.thingiverse.com/popular?per_page=${PAGE}&page=${S.page+1}`;
+  try {
+    const r = await fetch(url, {headers:{Authorization:`Bearer ${TV_KEY}`}});
+    if (!r.ok) return [];
+    const d = await r.json();
+    const items = d.hits || (Array.isArray(d)?d:[]);
+    return items.map(t => {
+      let imgUrl = t.thumbnail || t.preview_image || '';
+      try {
+        const u = new URL(imgUrl);
+        const direct = u.searchParams.get('url');
+        if (direct) imgUrl = direct;
+      } catch {}
+      return {
+        id: t.id, name: t.name, slug: t.id,
+        likesCount: t.like_count||0, downloadCount: t.download_count||0, makesCount: t.make_count||0,
+        printDuration: null, weight: null,
+        images: imgUrl ? [{filePath: imgUrl}] : [],
+        user: {publicUsername: t.creator?.name||t.creator?.first_name||''},
+        stls: [], _src: 'tv', _url: t.public_url||`https://www.thingiverse.com/thing:${t.id}`
+      };
+    });
+  } catch { return []; }
+}
+
+// ── RENDER ──
+const srcMeta = { p:{cls:'b-p',lbl:'Printables'}, tv:{cls:'b-t',lbl:'Thingiverse'} };
+
+function renderCard(it, ci) {
+  // Сохраняем данные в JS-хранилище (безопасно — без инъекции в DOM)
+  cardStore[ci] = it;
+
+  const imgs = (it.images||[]).slice(0,3).map(i => pImgUrl(i.filePath)).filter(Boolean);
+  const url = cardUrl(it);
+  const author = esc(it.user?.publicUsername||'');
+  const title = esc(it.name||'Без названия');
+  const time = fmtT(it.printDuration);
+  const weight = it.weight ? `${parseFloat(it.weight).toFixed(0)}г` : null;
+  const fc = it.stls?.length||0;
+  const sm = srcMeta[it._src||'p'];
+  const favd = isFav(it.id);
+
+  // Первое фото — src сразу. Остальные — только data-src, src не ставим (избегаем лишнего запроса)
+  const imgHtml = imgs.length
+    ? imgs.map((u,i) => i===0
+        ? `<img class="img-slide show" src="${esc(u)}" loading="eager" onerror="this.style.display='none'" />`
+        : `<img class="img-slide" data-src="${esc(u)}" loading="lazy" onerror="this.style.display='none'" />`
+      ).join('')
+    : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:30px;color:#222">📦</div>';
+
+  const dlBtn = it._src==='p'
+    ? `<a class="fb fb-dl" href="https://www.printables.com/model/${it.id}/download" target="_blank" rel="noopener">⬇️ ZIP</a>`
+    : '';
+
+  return `<div class="card" id="card-${ci}">
+    <a href="${esc(url)}" target="_blank" rel="noopener">
+      <div class="img-wrap" onmouseenter="startSlide('${ci}')" onmouseleave="pauseSlide('${ci}')">
+        ${imgHtml}
+        <span class="src-badge ${sm.cls}">${sm.lbl}</span>
+        <button class="fav-btn${favd?' on':''}" onclick="favClick('${ci}',this,event)">${favd?'❤️':'🤍'}</button>
+        ${imgs.length>1?`<div class="img-nav">${imgs.map((_,i)=>`<div class="img-dot${i===0?' on':''}" data-i="${i}"></div>`).join('')}</div>
+        <button class="img-arr arr-l" onclick="slide('${ci}',-1,event)">‹</button>
+        <button class="img-arr arr-r" onclick="slide('${ci}',1,event)">›</button>`:''}
+      </div>
+    </a>
+    <div class="card-body">
+      <a class="card-title" href="${esc(url)}" target="_blank" rel="noopener">${title}</a>
+      ${author?`<div class="card-author">${author}</div>`:''}
+      ${time||weight?`<div class="badges">${time?`<span class="btime">🕐 ${time}</span>`:''}${weight?`<span class="bweight">🧵 ${weight}</span>`:''}</div>`:''}
+      <div class="stats">
+        <span>❤️ ${fmtNum(it.likesCount)}</span>
+        <span>⬇️ ${fmtNum(it.downloadCount)}</span>
+        <span>🔧 ${fmtNum(it.makesCount)}</span>
+      </div>
+    </div>
+    <div class="card-foot">
+      <a class="fb fb-open" href="${esc(url)}" target="_blank" rel="noopener">Открыть</a>
+      ${dlBtn}
+      ${fc?`<a class="fb fb-files" href="https://www.printables.com/model/${it.id}-${esc(it.slug)}/files" target="_blank" rel="noopener">📁 ${fc} ${fc===1?'файл':fc<5?'файла':'файлов'}</a>`:''}
+    </div>
+  </div>`;
+}
+
+function favClick(ci, btn, e) {
+  e.preventDefault(); e.stopPropagation();
+  const it = cardStore[ci];
+  if (!it) return;
+  toggleFav(it.id, it, btn);
+}
+
+// ── CAROUSEL ──
+const timers = {};
+function slide(ci, dir, e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  const card = document.getElementById(`card-${ci}`);
+  if (!card) return;
+  const slides = card.querySelectorAll('.img-slide');
+  const dots = card.querySelectorAll('.img-dot');
+  if (slides.length < 2) return;
+  let cur = [...slides].findIndex(s=>s.classList.contains('show'));
+  let next = ((cur + dir) + slides.length) % slides.length;
+  const nSlide = slides[next];
+  // Ленивая загрузка: src не задан — берём из data-src
+  if (nSlide.dataset.src && !nSlide.getAttribute('src')) nSlide.src = nSlide.dataset.src;
+  slides[cur].classList.remove('show'); nSlide.classList.add('show');
+  dots[cur]?.classList.remove('on'); dots[next]?.classList.add('on');
+}
+function startSlide(ci) {
+  if (timers[ci]) return; // не запускать повторно если уже есть
+  timers[ci] = setInterval(() => slide(ci, 1), 1800);
+}
+function pauseSlide(ci) {
+  clearInterval(timers[ci]);
+  delete timers[ci];
+}
+
+// ── FETCH PAGE ──
+async function fetchPage() {
+  if (S.loading || favView) return;
+  S.loading = true;
+  const status = document.getElementById('status');
+  const spin = document.getElementById('scroll-spin');
+  if (S.page===0) { status.innerHTML='<div class="spin"></div>Загрузка...'; status.style.display='block'; }
+  else { spin.classList.add('show'); }
+  try {
+    const [pItems, tvItems] = await Promise.all([
+      (active.has('p') && !exhausted.p) ? fp().catch(()=>[]) : Promise.resolve([]),
+      (active.has('tv') && !exhausted.tv) ? ft().catch(()=>[]) : Promise.resolve([]),
+    ]);
+    if (pItems.length < PAGE) exhausted.p = true;
+    if (tvItems.length < PAGE) exhausted.tv = true;
+
+    let items = [...pItems, ...tvItems];
+    if (S.minDl > 0) items = items.filter(it => (it.downloadCount||0) >= S.minDl);
+
+    const offset = S.page * PAGE;
+    status.style.display='none';
+    spin.classList.remove('show');
+
+    if (S.page===0 && !items.length) {
+      status.textContent = S.minDl > 0
+        ? `Ничего с ${fmtNum(S.minDl)}+ скачиваний. Попробуй снизить фильтр.`
+        : 'Ничего не найдено.';
+      status.style.display='block';
+      S.loading=false;
+      return;
+    }
+    document.getElementById('grid').insertAdjacentHTML('beforeend',
+      items.map((it,i)=>renderCard(it, offset+i)).join(''));
+
+    const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
+    if (!hasMore) document.getElementById('scroll-end').classList.add('show');
+  } catch(err) {
+    status.textContent=`Ошибка: ${err.message}`;
+    status.style.display='block';
+  }
+  S.loading = false;
+}
+
+// ── INFINITE SCROLL ──
+const observer = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && !S.loading && !favView) {
+    const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
+    if (hasMore) { S.page++; fetchPage(); }
+  }
+}, { rootMargin: '200px' });
+observer.observe(document.getElementById('sentinel'));
+
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') doSearch(); });
+updateFavCnt();
+fetchPage();
+</script>
+</body>
+</html>
