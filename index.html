@@ -38,6 +38,8 @@
     .cat { padding: 4px 10px; border-radius: 6px; font-size: 12px; border: 1px solid #1e1e1e; background: #161616; color: #5a5a5a; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
     .cat:hover { border-color: #333; color: #bbb; }
     .cat.on { border-color: #ff6b35; color: #ff6b35; background: #ff6b3510; }
+    .cat-useful { border-color: #f5a623 !important; color: #f5a623 !important; }
+    .cat-useful.on { background: #f5a62318 !important; box-shadow: 0 0 0 1px #f5a623; }
 
     /* DROPDOWN MORE */
     .cat-more-wrap { position: relative; flex-shrink: 0; }
@@ -185,8 +187,8 @@
   <button class="pill" data-sort="rating" onclick="setSort(this)">⭐ Рейтинг</button>
   <div class="sep"></div>
   <span class="bar-lbl">Скачиваний:</span>
-  <button class="pill on" data-min="0" onclick="setMinDl(this)">Все</button>
-  <button class="pill" data-min="1000" onclick="setMinDl(this)">1к+</button>
+  <button class="pill" data-min="0" onclick="setMinDl(this)">Все</button>
+  <button class="pill on" data-min="1000" onclick="setMinDl(this)">1к+</button>
   <button class="pill" data-min="5000" onclick="setMinDl(this)">5к+</button>
   <button class="pill" data-min="10000" onclick="setMinDl(this)">10к+</button>
   <button class="pill" data-min="50000" onclick="setMinDl(this)">50к+</button>
@@ -194,7 +196,8 @@
 
 <!-- CATEGORIES -->
 <div class="cat-bar" id="cat-bar">
-  <button class="cat on" data-cat="" onclick="setCat(this,'')">Все</button>
+  <button class="cat" data-cat="" onclick="setCat(this,'')">Все</button>
+  <button class="cat cat-useful on" id="btn-useful" onclick="toggleUseful(this)">✨ Полезное</button>
   <button class="cat" data-cat="49" onclick="setCat(this,'49')">🔧 Инструменты</button>
   <button class="cat" data-cat="50" onclick="setCat(this,'50')">📦 Органайзеры</button>
   <button class="cat" data-cat="3" onclick="setCat(this,'3')">🏠 Дом</button>
@@ -309,10 +312,14 @@ const GQL = location.hostname === 'localhost' || location.hostname === '127.0.0.
 const TV_KEY = localStorage.getItem('k_tv') || '3b612e746dbcd466e384686f4fede899';
 const PAGE = 24;
 const active = new Set(['p','tv']);
-let S = { q:'', tq:'', cat:'', sort:'popular', page:0, loading:false, minDl:0 };
+let S = { q:'', tq:'', cat:'', sort:'popular', page:0, loading:false, minDl:1000 };
 const exhausted = { p: false, tv: false };
 let favView = false;
-let fetchGen = 0; // счётчик поколений — отменяет устаревшие запросы
+let usefulMode = true; // по умолчанию — режим «Полезное»
+let fetchGen = 0;
+
+// Категории для режима «Полезное»: инструменты, органайзеры, дом, кухня, ванная, офис, гараж
+const USEFUL_CATS = [49, 50, 3, 4, 5, 29, 139];
 
 // ── УТИЛИТЫ ──
 function esc(s) {
@@ -434,6 +441,21 @@ function openMW() {
   window.open(`https://makerworld.com/en/search?keyword=${encodeURIComponent(q)}&type=model`, '_blank');
 }
 
+// ── USEFUL MODE ──
+function toggleUseful(btn) {
+  usefulMode = !usefulMode;
+  btn.classList.toggle('on', usefulMode);
+  // Сбрасываем обычный фильтр категории
+  if (usefulMode) {
+    S.cat = '';
+    document.querySelectorAll('.cat:not(.cat-useful)').forEach(e => e.classList.remove('on'));
+    const tvBtn = document.getElementById('sb-tv');
+    tvBtn.classList.add('on'); tvBtn.style.opacity='1'; tvBtn.title='';
+  }
+  exitFavView();
+  reset();
+}
+
 // ── SORT / CAT / FILTER ──
 function setSort(el) {
   exitFavView();
@@ -451,6 +473,8 @@ function setMinDl(el) {
 }
 function setCat(el, catId) {
   exitFavView();
+  usefulMode = false;
+  document.getElementById('btn-useful')?.classList.remove('on');
   document.querySelectorAll('.cat,.cat-d').forEach(e=>e.classList.remove('on'));
   el.classList.add('on');
   S.cat = catId;
@@ -504,6 +528,8 @@ async function translate(text) {
 }
 async function doSearch() {
   exitFavView();
+  usefulMode = false;
+  document.getElementById('btn-useful')?.classList.remove('on');
   const raw = document.getElementById('q').value.trim();
   S.q = raw; S.tq = raw;
   const note = document.getElementById('tr-note');
@@ -532,10 +558,10 @@ function reset() {
 }
 
 // ── FETCH PRINTABLES ──
-async function fp() {
-  const cat = S.cat ? `, categoryId: ${S.cat}` : '';
-  const q = JSON.stringify(S.tq||S.q||'');
-  const gql = `{ searchPrints2(query:${q}, limit:${PAGE}, offset:${S.page*PAGE}${cat}, ordering:${S.sort}) {
+async function fpSingle(catId, q) {
+  const catPart = catId ? `, categoryId: ${catId}` : '';
+  const qStr = JSON.stringify(q||'');
+  const gql = `{ searchPrints2(query:${qStr}, limit:${PAGE}, offset:${S.page*PAGE}${catPart}, ordering:${S.sort}) {
     items { id name slug likesCount downloadCount makesCount printDuration weight
       image { filePath } images { filePath } user { publicUsername } stls { id name }
     }
@@ -545,6 +571,19 @@ async function fp() {
   const d = await r.json();
   if (d.errors) throw new Error(d.errors[0].message);
   return d.data.searchPrints2.items.map(i=>({...i, _src:'p'}));
+}
+
+async function fp() {
+  if (usefulMode && !(S.tq||S.q)) {
+    const results = await Promise.all(USEFUL_CATS.map(catId => fpSingle(catId, '').catch(()=>[])));
+    const seen = new Set();
+    return results.flat().filter(it => {
+      if (seen.has(it.id)) return false;
+      seen.add(it.id);
+      return true;
+    }).sort((a,b) => (b.likesCount||0) - (a.likesCount||0));
+  }
+  return fpSingle(S.cat||null, S.tq||S.q||'');
 }
 
 // ── FETCH THINGIVERSE ──
