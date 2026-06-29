@@ -309,6 +309,7 @@ const active = new Set(['p','tv']);
 let S = { q:'', tq:'', cat:'', sort:'popular', page:0, loading:false, minDl:0 };
 const exhausted = { p: false, tv: false };
 let favView = false;
+let fetchGen = 0; // счётчик поколений — отменяет устаревшие запросы
 
 // ── УТИЛИТЫ ──
 function esc(s) {
@@ -515,9 +516,9 @@ async function doSearch() {
 
 function reset() {
   if (favView) return;
-  // Очищаем таймеры карусели
+  fetchGen++; // инвалидируем все текущие in-flight запросы
+  S.loading = false; // разблокируем fetchPage
   Object.keys(timers).forEach(k => { clearInterval(timers[k]); delete timers[k]; });
-  // Очищаем хранилище карточек
   Object.keys(cardStore).forEach(k => delete cardStore[k]);
   S.page=0; exhausted.p=false; exhausted.tv=false;
   document.getElementById('grid').innerHTML='';
@@ -670,6 +671,7 @@ function pauseSlide(ci) {
 async function fetchPage() {
   if (S.loading || favView) return;
   S.loading = true;
+  const gen = fetchGen; // запоминаем текущее поколение
   const status = document.getElementById('status');
   const spin = document.getElementById('scroll-spin');
   if (S.page===0) { status.innerHTML='<div class="spin"></div>Загрузка...'; status.style.display='block'; }
@@ -679,6 +681,10 @@ async function fetchPage() {
       (active.has('p') && !exhausted.p) ? fp().catch(()=>[]) : Promise.resolve([]),
       (active.has('tv') && !exhausted.tv) ? ft().catch(()=>[]) : Promise.resolve([]),
     ]);
+
+    // Если пока грузились — пришёл новый reset(), выбрасываем результат
+    if (gen !== fetchGen) { S.loading = false; return; }
+
     if (pItems.length < PAGE) exhausted.p = true;
     if (tvItems.length < PAGE) exhausted.tv = true;
 
@@ -703,6 +709,7 @@ async function fetchPage() {
     const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
     if (!hasMore) document.getElementById('scroll-end').classList.add('show');
   } catch(err) {
+    if (gen !== fetchGen) { S.loading = false; return; }
     status.textContent=`Ошибка: ${err.message}`;
     status.style.display='block';
   }
