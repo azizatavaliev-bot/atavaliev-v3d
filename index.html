@@ -302,7 +302,10 @@
 </div>
 
 <script>
-const GQL = 'https://api.printables.com/graphql/';
+// На localhost идём напрямую, на проде — через прокси на нашем сервере (CORS от Printables)
+const GQL = location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+  ? 'https://api.printables.com/graphql/'
+  : '/graphql';
 const TV_KEY = localStorage.getItem('k_tv') || '3b612e746dbcd466e384686f4fede899';
 const PAGE = 24;
 const active = new Set(['p','tv']);
