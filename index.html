@@ -597,7 +597,7 @@ async function fp() {
 
 // ── FETCH THINGIVERSE ──
 async function ft() {
-  if (S.cat) return [];
+  if (S.cat || usefulMode) return [];
   const sort = {popular:'popular', latest:'newest', makes_count:'makes', rating:'popular'}[S.sort]||'popular';
   const q = S.tq||S.q;
   const url = q
@@ -745,7 +745,6 @@ async function fetchPage() {
     let items = [...pItems, ...tvItems];
     if (S.minDl > 0) items = items.filter(it => (it.downloadCount||0) >= S.minDl);
 
-    const offset = S.page * PAGE;
     status.style.display='none';
     spin.classList.remove('show');
 
@@ -757,7 +756,9 @@ async function fetchPage() {
       S.loading=false;
       return;
     }
-    document.getElementById('grid').insertAdjacentHTML('beforeend',
+    const grid = document.getElementById('grid');
+    const offset = grid.children.length;
+    grid.insertAdjacentHTML('beforeend',
       items.map((it,i)=>renderCard(it, offset+i)).join(''));
 
     const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
