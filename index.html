@@ -336,7 +336,6 @@ function fmtT(h) {
   const hh=Math.floor(v), mm=Math.round((v-hh)*60);
   return hh===0?`${mm} мин`:mm?`${hh}ч ${mm}м`:`${hh}ч`;
 }
-const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 function pImgUrl(fp) {
   if (!fp) return null;
   const full = fp.startsWith('http') ? fp : `https://media.printables.com/${fp}`;
@@ -399,6 +398,7 @@ function renderFavView() {
   const f = getFavs();
   const grid = document.getElementById('grid');
   document.getElementById('status').style.display='none';
+  document.getElementById('model-count').style.display='none';
   document.getElementById('scroll-spin').classList.remove('show');
   document.getElementById('scroll-end').classList.remove('show');
   const items = Object.values(f);
@@ -455,8 +455,6 @@ function toggleUseful(btn) {
   btn.classList.toggle('on', usefulMode);
   document.querySelectorAll('.cat:not(.cat-useful)').forEach(e => e.classList.remove('on'));
   S.cat = '';
-  const tvBtn = document.getElementById('sb-tv');
-  tvBtn.classList.add('on'); tvBtn.style.opacity='1'; tvBtn.title='';
   if (!usefulMode) {
     document.querySelector('.cat[data-cat=""]')?.classList.add('on');
   }
@@ -538,6 +536,8 @@ async function doSearch() {
   exitFavView();
   usefulMode = false;
   document.getElementById('btn-useful')?.classList.remove('on');
+  document.querySelectorAll('.cat,.cat-d').forEach(e => e.classList.remove('on'));
+  document.querySelector('.cat[data-cat=""]')?.classList.add('on');
   const raw = document.getElementById('q').value.trim();
   S.q = raw; S.tq = raw;
   const note = document.getElementById('tr-note');
@@ -731,8 +731,8 @@ function updateModelCount() {
   else { el.style.display='none'; }
 }
 
-async function fetchPage() {
-  if (S.loading || favView) return;
+async function fetchPage(skipLoadingGuard) {
+  if (!skipLoadingGuard && (S.loading || favView)) return;
   S.loading = true;
   const gen = fetchGen;
   const status = document.getElementById('status');
@@ -747,7 +747,8 @@ async function fetchPage() {
 
     if (gen !== fetchGen) { S.loading = false; return; }
 
-    if (pItems.length < PAGE) exhausted.p = true;
+    const pThreshold = usefulMode ? USEFUL_CATS.length * PAGE : PAGE;
+    if (pItems.length < pThreshold) exhausted.p = true;
     if (tvItems.length < PAGE) exhausted.tv = true;
 
     let items = [...pItems, ...tvItems];
@@ -761,10 +762,8 @@ async function fetchPage() {
     if (S.page===0 && !items.length) {
       const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
       if (hasMore) {
-        // фильтр отсеял всё — грузим следующую страницу автоматически
         S.page++;
-        S.loading = false;
-        fetchPage();
+        fetchPage(true);
         return;
       }
       status.textContent = S.minDl > 0
@@ -786,8 +785,7 @@ async function fetchPage() {
       document.getElementById('scroll-end').classList.add('show');
     } else if (items.length < 8) {
       S.page++;
-      S.loading = false;
-      fetchPage();
+      fetchPage(true);
       return;
     }
   } catch(err) {
