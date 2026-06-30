@@ -302,6 +302,7 @@
 
 <div class="main">
   <div id="status" class="status" style="display:none"></div>
+  <div id="model-count" style="font-size:11px;color:#444;padding:4px 20px;display:none"></div>
   <div id="grid" class="grid"></div>
   <div class="scroll-sentinel" id="sentinel">
     <div class="scroll-spin" id="scroll-spin"></div>
@@ -315,7 +316,7 @@ const GQL = location.hostname === 'localhost' || location.hostname === '127.0.0.
   ? 'https://api.printables.com/graphql/'
   : '/graphql';
 const TV_KEY = localStorage.getItem('k_tv') || '3b612e746dbcd466e384686f4fede899';
-const PAGE = 24;
+const PAGE = 48; // сколько запрашиваем с API за раз
 const active = new Set(['p','tv']);
 let S = { q:'', tq:'', cat:'', sort:'popular', page:0, loading:false, minDl:1000 };
 const exhausted = { p: false, tv: false };
@@ -558,6 +559,7 @@ function reset() {
   Object.keys(cardStore).forEach(k => delete cardStore[k]);
   S.page=0; exhausted.p=false; exhausted.tv=false;
   document.getElementById('grid').innerHTML='';
+  document.getElementById('model-count').style.display='none';
   document.getElementById('scroll-end').classList.remove('show');
   document.getElementById('scroll-spin').classList.remove('show');
   document.getElementById('status').style.display='none';
@@ -583,7 +585,7 @@ async function fpSingle(catId, q, limit) {
 
 async function fp() {
   if (usefulMode && !(S.tq||S.q)) {
-    const PER_CAT = 24;
+    const PER_CAT = PAGE;
     const results = await Promise.all(USEFUL_CATS.map(catId => fpSingle(catId, '', PER_CAT).catch(()=>[])));
     const seen = new Set();
     return results.flat().filter(it => {
@@ -722,10 +724,17 @@ function pauseSlide(ci) {
 }
 
 // ── FETCH PAGE ──
+function updateModelCount() {
+  const cnt = document.getElementById('grid').children.length;
+  const el = document.getElementById('model-count');
+  if (cnt > 0) { el.textContent = `Показано: ${cnt} моделей`; el.style.display='block'; }
+  else { el.style.display='none'; }
+}
+
 async function fetchPage() {
   if (S.loading || favView) return;
   S.loading = true;
-  const gen = fetchGen; // запоминаем текущее поколение
+  const gen = fetchGen;
   const status = document.getElementById('status');
   const spin = document.getElementById('scroll-spin');
   if (S.page===0) { status.innerHTML='<div class="spin"></div>Загрузка...'; status.style.display='block'; }
@@ -736,7 +745,6 @@ async function fetchPage() {
       (active.has('tv') && !exhausted.tv) ? ft().catch(()=>[]) : Promise.resolve([]),
     ]);
 
-    // Если пока грузились — пришёл новый reset(), выбрасываем результат
     if (gen !== fetchGen) { S.loading = false; return; }
 
     if (pItems.length < PAGE) exhausted.p = true;
@@ -748,7 +756,17 @@ async function fetchPage() {
     status.style.display='none';
     spin.classList.remove('show');
 
+    const grid = document.getElementById('grid');
+
     if (S.page===0 && !items.length) {
+      const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
+      if (hasMore) {
+        // фильтр отсеял всё — грузим следующую страницу автоматически
+        S.page++;
+        S.loading = false;
+        fetchPage();
+        return;
+      }
       status.textContent = S.minDl > 0
         ? `Ничего с ${fmtNum(S.minDl)}+ скачиваний. Попробуй снизить фильтр.`
         : 'Ничего не найдено.';
@@ -756,13 +774,22 @@ async function fetchPage() {
       S.loading=false;
       return;
     }
-    const grid = document.getElementById('grid');
+
     const offset = grid.children.length;
     grid.insertAdjacentHTML('beforeend',
       items.map((it,i)=>renderCard(it, offset+i)).join(''));
+    updateModelCount();
 
+    // Если после фильтра мало карточек — подгрузить ещё
     const hasMore = (active.has('p') && !exhausted.p) || (active.has('tv') && !exhausted.tv);
-    if (!hasMore) document.getElementById('scroll-end').classList.add('show');
+    if (!hasMore) {
+      document.getElementById('scroll-end').classList.add('show');
+    } else if (items.length < 8) {
+      S.page++;
+      S.loading = false;
+      fetchPage();
+      return;
+    }
   } catch(err) {
     if (gen !== fetchGen) { S.loading = false; return; }
     status.textContent=`Ошибка: ${err.message}`;
