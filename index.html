@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Atavaliev v 3D</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230f0f0f'/><text x='50' y='62' font-family='Arial Black,sans-serif' font-size='46' font-weight='900' text-anchor='middle' fill='%23a84000' letter-spacing='-2'>3D</text><text x='49' y='60' font-family='Arial Black,sans-serif' font-size='46' font-weight='900' text-anchor='middle' fill='%23ff6b35' letter-spacing='-2'>3D</text></svg>">
   <link rel="preconnect" href="https://media.printables.com" crossorigin>
   <link rel="dns-prefetch" href="https://media.printables.com">
   <link rel="preconnect" href="https://cdn.thingiverse.com" crossorigin>
@@ -334,9 +335,11 @@ function fmtT(h) {
   const hh=Math.floor(v), mm=Math.round((v-hh)*60);
   return hh===0?`${mm} мин`:mm?`${hh}ч ${mm}м`:`${hh}ч`;
 }
+const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 function pImgUrl(fp) {
   if (!fp) return null;
-  return fp.startsWith('http') ? fp : `https://media.printables.com/${fp}`;
+  const full = fp.startsWith('http') ? fp : `https://media.printables.com/${fp}`;
+  return `/img?url=${encodeURIComponent(full)}`;
 }
 function cardUrl(it) {
   if (it._src==='tv') return it._url||'#';
@@ -449,12 +452,12 @@ function openMW() {
 function toggleUseful(btn) {
   usefulMode = !usefulMode;
   btn.classList.toggle('on', usefulMode);
-  // Сбрасываем обычный фильтр категории
-  if (usefulMode) {
-    S.cat = '';
-    document.querySelectorAll('.cat:not(.cat-useful)').forEach(e => e.classList.remove('on'));
-    const tvBtn = document.getElementById('sb-tv');
-    tvBtn.classList.add('on'); tvBtn.style.opacity='1'; tvBtn.title='';
+  document.querySelectorAll('.cat:not(.cat-useful)').forEach(e => e.classList.remove('on'));
+  S.cat = '';
+  const tvBtn = document.getElementById('sb-tv');
+  tvBtn.classList.add('on'); tvBtn.style.opacity='1'; tvBtn.title='';
+  if (!usefulMode) {
+    document.querySelector('.cat[data-cat=""]')?.classList.add('on');
   }
   exitFavView();
   reset();
