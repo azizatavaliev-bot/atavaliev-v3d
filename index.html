@@ -583,7 +583,7 @@ async function fpSingle(catId, q, limit) {
 
 async function fp() {
   if (usefulMode && !(S.tq||S.q)) {
-    const PER_CAT = 8;
+    const PER_CAT = 24;
     const results = await Promise.all(USEFUL_CATS.map(catId => fpSingle(catId, '', PER_CAT).catch(()=>[])));
     const seen = new Set();
     return results.flat().filter(it => {
