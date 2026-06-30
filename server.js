@@ -60,6 +60,7 @@ function proxyImg(imgUrl, res) {
         'Content-Type': 'image/webp',
         'Cache-Control': 'public, max-age=86400',
       });
+      pRes.on('error', () => { try { resizer.destroy(); res.end(); } catch {} });
       pRes.pipe(resizer).pipe(res);
       resizer.on('error', () => { try { res.end(); } catch {} });
     } else {

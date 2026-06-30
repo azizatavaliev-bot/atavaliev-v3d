@@ -569,7 +569,7 @@ async function fpSingle(catId, q, limit) {
   const lim = limit || PAGE;
   const catPart = catId ? `, categoryId: ${catId}` : '';
   const qStr = JSON.stringify(q||'');
-  const gql = `{ searchPrints2(query:${qStr}, limit:${lim}, offset:${S.page*lim}${catPart}, ordering:${S.sort}) {
+  const gql = `{ searchPrints2(query:${qStr}, limit:${lim}, offset:${S.page*PAGE}${catPart}, ordering:${S.sort}) {
     items { id name slug likesCount downloadCount makesCount printDuration weight
       image { filePath } images { filePath } user { publicUsername } stls { id name }
     }
@@ -634,8 +634,9 @@ function renderCard(it, ci) {
   // Сохраняем данные в JS-хранилище (безопасно — без инъекции в DOM)
   cardStore[ci] = it;
 
-  const thumb = it.image?.filePath ? pImgUrl(it.image.filePath) : null;
-  const extraImgs = (it.images||[]).slice(0,2).map(i => pImgUrl(i.filePath)).filter(Boolean);
+  const thumbPath = it.image?.filePath || null;
+  const thumb = thumbPath ? pImgUrl(thumbPath) : null;
+  const extraImgs = (it.images||[]).filter(i => i.filePath && i.filePath !== thumbPath).slice(0,2).map(i => pImgUrl(i.filePath));
   const imgs = [thumb, ...extraImgs].filter(Boolean).slice(0,3);
   const url = cardUrl(it);
   const author = esc(it.user?.publicUsername||'');
